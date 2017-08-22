@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="description" content=""/>
+    <meta name="author" content=""/>
+    <title id="title">Cardinality</title>
+
+    <script>
+        /************GENERAL FUNTIONS************/
+        /* A component of intersect_n: returns array of intersection of two arrays.
+         * array1, array2 are 1-dimensional array representing sets */
+        function intersect_2( array1, array2 ){
+            var len1=array1.length;
+            var out=[];
+            for(var i=0; i<len1; i++){
+                if( array2.indexOf( array1[i] )!=-1 ){
+                    out.push( array1[i] );
+                } 
+            }
+            return out;
+        }
+        /* Returns array of intersection of n arrays by checking pair-wise 
+         * intersections and feeding the resulting array into the next pair-wise
+         * intersection check.  Also checks intersection of last and first
+         * elements by using modulus of index
+         * S is 2-dimensional array, representing a set of sets.
+         * start is beginning index; n is number of indexes to intersect */
+        function intersect_n( S, start, n ){
+            var len=S.length,
+                curr=S[start],//1st comparison array
+                end=n+start-1;
+            //console.log( "start="+start );
+            for(var i=start+1; i<=end; i++){
+                curr=intersect_2( S[i%len], curr );
+            }
+            return curr;
+        }
+    </script>
+  </head>
+  <body>
+    <script>
+        /* Displays array as ( a, b, c, d, etc )*/
+        function dispArray( array, dimension ){
+            var len=array.length;
+            if( dimension>2 ){
+                for( var i=0; i<len; i++ ){
+                    dispArray( array, dimension-1 )
+                }
+            }
+            else{
+                document.write( "S=<br>" );
+                for( var i=0; i<len; i++ ){
+                    document.write( "( "+array[i]+") " );
+                    document.write( "<br>" );
+                }
+                document.write( "<br>" );
+            }
+        }
+        
+        /* Compute the cardinality of a set (array) using inclusion/exclusion */
+        function Cardinality(){
+            /* get() is 'Public' interface. S is 2-dimensional array to 
+             * represent a set of sets */
+            this.get=function( S ){
+                this.len=S.length;
+                this.sum=0;
+                this.mult=1;
+                /* Add the sets;*/
+                for(var i=0; i<this.len; i++){
+                    this.disp([i]);
+                    this.sum+=S[i].length;
+                }
+                document.write( "<br>" );
+                /* Alternately subtract or add result of makeMap(), followMap() */
+                for ( i = 2; i <= this.len; i++) {
+                    this.mult*=-1;
+                    this.makeMap( S, i, [], 0, 0 );
+                    document.write( "<br>" );
+                }
+                return this.sum;
+            }
+            
+            /* Need a pattern to add each element to each other element, so
+             * here's a recursive function to create the pattern.
+             * At the conclusion of each recursive process, calls followMap() */
+            this.makeMap=function ( S, n, map, start, index) {
+                if (index === n ) {
+                    this.followMap( S, map );
+                    return;
+                }
+                for (var i = start; i < this.len; i++) {
+                    map[index] = i;
+                    this.makeMap( S, n, map, i + 1, index + 1);
+                }
+            }
+            
+            /* Follows the pattern, making pair-wise comparisons of indexes listed
+             * in map. Implements n-wise comparisons by feeding result into the 
+             * next comparison. Result of choose() is either added or subtracted, 
+             * depending on state of 'mult' */
+            this.followMap=function( S, map ){
+                var mapLen=map.length;
+                if( !mapLen ){
+                    console.log( "no map" );
+                    return;
+                }
+                this.disp( map );
+                var curr=S[ map[0] ];
+                for( var i=1; i<mapLen; i++ ){
+                    curr=intersect_2( S[ map[i] ], curr );//general functions, above
+                }
+                this.sum+= curr.length * this.mult;
+            }
+            
+            /* Specialized display to clarify what's going on. This is all for
+             * educational purposes, right?  */
+            this.disp=function( map ){
+                var out=(this.mult>0)? "+ |(" : "- |(";
+                var len=map.length;
+                for(var i=0; i<len; i++){
+                    out+=map[i];
+                    if( i==len-1 ){
+                        out+=")| ";
+                    }
+                    else{
+                        out+="^";
+                    } 
+                }
+                document.write( out );
+            }
+        }
+        
+        /* Main function for the program: instantiates Cardinality object,
+         * calls get() and displays result.
+         * Uncomment to get a different size array, or alter the code to 
+         * pass in your own.*/
+        function cardinalityTest(){
+            var S=
+                [
+                    [1,3,4,5,6,8,11],
+                    [2,4,6,8,10,11],
+                    [2,3,6,7,8,11],
+                    [2,3,5,7,8,11],
+                    [2,3,5,7,9,11],
+                    [2,4,5,6,8,12],
+                ];
+//            var S=
+//                [
+//                    [1,2,3,4,5,8,9],
+//                    [2,3,4,5],
+//                    [2,3,4,5,6,7,8,9],
+//                ];
+            dispArray( S, 2 );
+            var C=new Cardinality();
+            var out = C.get( S );
+            document.write( "<br>Cardinality is "+out+"<br><br>" );
+        }
+        (function(){
+            cardinalityTest();
+        })();
+    </script>
+  </body>
+</html>
+
