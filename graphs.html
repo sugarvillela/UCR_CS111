@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="description" content=""/>
+    <meta name="author" content=""/>
+    <title id="title">Graphs</title>
+
+    <script>
+        /* This function is matrix * vector, not called in the program */
+        function mXv( m1, v1 ){
+            var lenM=m1.length, lenV=v1.length;
+            var out=init1d( lenM, 0 );
+            if( !lenM || !lenV ){
+                document.write( "mXv mult error: don't pass empty array<br>" );
+                return out;
+            }
+            var n=m1[0].length;
+            if( lenV !=m1[0].length ){
+                document.write( "mXv mult error: width m1 must equal length v1<br>" );
+                return out;
+            }
+            for ( var i = 0; i < lenM; i++ ) {
+                for ( var j = 0; j < n; j++ ) {
+                    document.write(m1[i][j]+"*"+v1[j]+"<br>");
+                    out[i]+=m1[i][j]*v1[j];
+                }
+            }
+            return out;
+        }
+    </script>
+  </head>
+  <body>
+      <div id="disp"></div>
+    <script>
+
+        /* Dev and utility functions */
+        function dispArray( array, dimension ){
+            if( dimension>2 ){
+                document.write( dimension+"-dimensional array:<br>" );
+                dispArray( array, dimension-1 )
+            }
+            else{
+                document.write( "&nbsp;&nbsp;"+dimension+"-dimensional array:<br>" );
+                var len=array.length;
+                for(var i=0; i<len; i++){
+                    document.write( "&nbsp;&nbsp;&nbsp;&nbsp;"+i+": "+array[i]+"<br>" );
+                }
+                document.write( "<br>" );
+            }
+        }
+        
+        /* create an array of size 'n', initialize it with all 'init'*/
+        function init1d( n, init ){
+            var out=[];
+            for ( var i = 0; i < n; i++) {
+                out[i]=init;
+            }
+            return out;
+        }
+        
+        /* same as above, 2-dimensional */
+        function init2d( m, n, init ){
+            var out=[];
+            for ( var i = 0; i < m; i++) {
+                out[i]=init1d( n, init );
+            }
+            return out;
+        }
+        /* List for displaying letters along borders of table */
+        var letters="abcdefghijklmnopqrstuvwxyz";
+        
+        /* Display matrix as a table */
+        function dispMatrix( matrix ){
+            var m=matrix.length;
+            if( !m ){
+                return "";
+            }
+            var n=matrix[0].length, out='<table><tr><th></th>';  
+            for ( var i = 0; i < n; i++ ) {
+                out+='<th>'+letters[i%26]+"</th>"
+            }
+            for ( var i = 0; i < m; i++ ) {
+                out+='</tr><tr><th>'+letters[i%26]+"</th>"
+                for ( var j = 0; j < n; j++ ) {
+                    out+='<td>'+matrix[i][j]+"</td>"
+                }
+            }
+            out+="</tr></table>";
+            return out;
+        }
+        
+        /* A path object stores data for one path */
+        var Path=function( setx, sety, setLength, setNum ){
+            this.x=setx;
+            this.y=sety;
+            this.len=setLength;
+            this.numPaths=setNum;
+            this.hasPath=function( x1, y1 ){
+                return ( x1==this.x && y1==this.y ) || y1==this.x && x1==this.y
+            }
+            this.setNumPaths=function( n ){
+                /* sets only if n is a max */
+                if( n>this.numPaths ){
+                    this.numPaths=n;
+                }
+            }
+            this.disp=function(){
+                document.write( 
+                    this.x+"&lt;&gt;"+this.y+
+                    ", shortest length="+this.len+
+                    ", max paths any length="+this.numPaths+
+                    "<br>" );
+            }
+        }
+        
+        /* A paths object stores multiple paths, wich access methods.
+         * Methods call the corresponding method for each path object stored */
+        var Paths=function(){
+            this.p=[];
+            this.push=function( setx, sety, setLength, setNum ){
+                this.p.push( new Path( setx,sety, setLength, setNum ) )
+            }
+            this.hasPath=function( x1, y1 ){
+                /* Returns false if no path matches x1, y1
+                 * If path found, returns index, so use === to check */
+                var len=this.p.length;
+                for ( var i = 0; i < len; i++ ) {
+                    if( this.p[i].hasPath( x1, y1 ) ){
+                        return i;
+                    }
+                }
+                return false;
+            }
+            this.setNumPaths=function( n, pIndex ){
+                this.p[ pIndex ].setNumPaths( n );
+            }
+            this.getLen=function(){
+                return this.p.length;
+            }
+            this.disp=function(){
+                document.write( "<br>" );
+                var len=this.p.length;
+                for ( var i = 0; i < len; i++ ) {
+                    this.p[i].disp();
+                }
+                document.write( "<br>" );
+            }
+        }
+        /* Here's your naive algo for matrix multiplicationm O(n^3)
+         * You could get it down to O(n^2.7) with a bunch of code, but why? */
+        function mXm( m1, m2 ){//matrix*matrix
+            var m=m1.length, n=m2.length;
+            if( !m || !n ){
+                document.write( "mXm mult error: don't pass empty array<br>" );
+                return init2d( 1,1,0 );
+            }
+            var p=m2[0].length;
+            if( n!=m1[0].length ){
+                document.write( "mXm mult error: width m1 must equal length m2<br>" );
+                return init2d( m,1,0 );
+            }
+            var out=init2d( m, p, 0 );
+            for ( var i = 0; i < m; i++ ) {
+                for ( var j = 0; j < p; j++ ) {
+                    for ( var k = 0; k < n; k++ ) {
+                        out[i][j]+=m1[i][k]*m2[k][j];
+                    }
+                }
+            }
+            return out;
+        }
+        
+        /* Called by numPaths to add paths to paths object */
+        function findNewPaths( prev, curr, length, p ){
+            /* Assumes no array is empty 
+             * p is a 'paths' object with its own self-checking and 
+             * self-updating methods*/
+            var m=prev.length, n=prev[0].length,pIndex;
+            for ( var i = 0; i < m; i++ ) {
+                for ( var j = 0; j < n; j++ ) {
+                    if(i==j){//not interested in 0 length paths
+                        continue;
+                    }
+                    if( curr[i][j] > prev[i][j] ){
+                        /* curr>prev indicates new path.
+                         * If a path hasn't been recorded yet, save it.
+                         * Otherwise update the max path value. */
+                        pIndex=p.hasPath( letters[i],letters[j] );
+                        if( pIndex===false ){
+                            p.push( letters[i],letters[j], length, curr[i][j] );
+                        }
+                        else{
+                            p.setNumPaths( curr[i][j], pIndex );
+                        }
+                    }
+                }
+            }
+        }
+        /* Main function: displays initial matrix, results of each matrix
+         * multiplication and calls paths.display to show found paths */
+        function numPaths( matrix ){
+            /* Display initial matrix */
+            document.write("<br>1<br>");
+            document.write( dispMatrix( matrix ) );
+            var curr, prev=matrix, m=matrix.length, p=new Paths();
+            /* Length 1 test */
+            findNewPaths( init2d( m, m, 0 ), matrix, 1, p );
+            for ( var i = 2; i < m; i++ ) {
+                /* Current is previous matrix * initial matrix */
+                curr=mXm( matrix, prev )
+                /* Length i test */
+                findNewPaths( prev, curr, i, p );
+                /* Display current matrix */
+                document.write("<br>"+i+"<br>");
+                document.write( dispMatrix( curr ) );
+                /* Set up for next iteration */
+                prev=curr;
+            }
+            p.disp();
+        }
+       
+        (function(){
+            var m1=[
+                [0,1,0,1],
+                [0,0,1,1],
+                [0,1,0,0],
+                [0,0,1,0],
+            ];
+            numPaths( m1 );
+//            var m2=[
+//                [13,9,7],
+//                [8,7,4],
+//                [6,4,0]
+//            ];
+//            dispArray( m1, 2 );
+//            dispArray( m2, 2 );           
+            //var mNu=mXm( m1, m2 );
+            //dispArray( mNu, 2 );
+        })();
+    </script>
+  </body>
+</html>
+
