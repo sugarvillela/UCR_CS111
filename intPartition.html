@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="description" content=""/>
+    <meta name="author" content=""/>
+    <title id="title">IntPartitions</title>
+
+    <script>
+        /* Helper function: copy array except where element matches value */
+        function removeByValue( array, value ){
+            var len=array.length;
+            var nuArray=[];
+            for(var i=0; i<len; i++){
+                if( array[i]!=value ){
+                    nuArray.push( array[i] )
+                }
+            }
+            return nuArray;
+        }
+
+    </script>
+  </head>
+  <body>
+    <script>
+        /* Not called in this program, but useful in dev */
+        function dispArray( array, dimension ){
+            var len=array.length;
+            if( dimension>2 ){
+                for( var i=0; i<len; i++ ){
+                    dispArray( array, dimension-1 )
+                }
+            }
+            else{
+                document.write( "S=<br>" );
+                for( var i=0; i<len; i++ ){
+                    document.write( "( "+array[i]+") " );
+                    document.write( "<br>" );
+                }
+                document.write( "<br>" );
+            }
+        }
+        /* This object contains functions that do the same thing, but with
+         * varying constraints. I wrote this progressively, simple to complex,
+         * to become familiar with integer partitioning.  Since I did it in a
+         * hurry as a way of calculating my homework, it's not necessarily the
+         * clearest implementation, but it works.
+         * 
+         * Types of functions
+         * simple() n of possible arrangements with no constraints
+         * ANDgte() n of possible arrangements with greater-than constraints
+         * ORgte() n of possible arrangements where the constraints outnumber
+         * the elements in the set
+         * hiLo() n of possible arrangements with > < and in-between constraints
+         * hiLo() calls the other functions as needed based on the constraints
+         * */
+        function IntPartition(){
+            /* Choose function implements binomial coefficient formula */
+            this.choose=function( top, bot ){
+                var tminb=top-bot;
+                if( top<1 || bot<1 || tminb<0 ){
+                    return 0;
+                }
+                var nuTop = 1;
+                for( var i=top;i>tminb;i-- ){
+                    nuTop *= i;
+                }
+                var nuBot = 1;
+                for( i=bot;i>0;i-- ){
+                    nuBot *= i;
+                }
+                return nuTop/nuBot;
+            }
+            
+            /* Number of possible outcomes for a number of groups in size m, 
+             * no constraints as to size of groups. Calculates top and bottom
+             * and calls choose() with those values */
+            this.simple=function( m, nGroups ){
+                var top=m+nGroups-1;
+                var bot=nGroups-1;
+                return this.choose( top, bot );
+            }
+            
+            /* Like simple but includes greater-than constraints.  AND means all
+             * constraints are considered.  Returns 0 if constraints > m */
+            this.ANDgte=function( m, nGroups, gteList ){
+                var top=m+nGroups-1;
+                var bot=nGroups-1;
+                var len=gteList.length;
+                for(var i=0; i<len; i++){
+                    top-=gteList[i];
+                }
+                if( top<0 ){
+                    return this.ORgte( m, nGroups, gteList );
+                }
+                return this.choose( top, bot );
+            }
+            
+            /* Like ANDgte but includes high and low constraints.
+             * Every group must be accounted for in both lists. If no bound, use
+             * 0 as placeholder in the list */
+            this.hiLo=function( m, gteList, lteList ){
+                var nGroups=gteList.length;
+                if( nGroups != lteList.length ){ 
+                    document.write( 
+                        "<br>Bounds lists need to be the same size<br>"+
+                        "If an item has no bound, pass 0 for that item<br>"
+                    );
+                    return 0;
+                }
+                document.write( "Size of case: "+m+", Number of groups: "+nGroups );
+                document.write( "<br>Lower Bounds Inclusive: " );
+                this.dispConstraints( gteList );
+                document.write( "<br>Upper Bounds Inclusive: " );
+                this.dispConstraints( lteList );
+                document.write( "<br>" );
+                /* Get result of lower bounds only */
+                var gteSum=this.ANDgte( m, nGroups, gteList );
+                /* This loop does 3 things:
+                 * 1. Subtracts lower bounds from higher bounds;
+                 * 2. Corrects negative values to 0. That means 0 values passed
+                 *    in lte list are ignored
+                 * 3. Subtracts lower bounds from m to prepare for last step 
+                */
+                var haveBound=false;
+                for(var i=0; i<nGroups; i++){
+                    /* Subtract lo from hi; may cause negative values */
+                    lteList[i]-=gteList[i];
+                    if( lteList[i]<0 ){
+                        /* Correct negative values to 0 */
+                        lteList[i]=0;
+                    }
+                    else if( lteList[i]>0 ){ 
+                        /* Subtract lo from m */
+                        lteList[i]++;
+                        /* One bound>0 sets true */
+                        haveBound=true;
+                    }
+                    m-=gteList[i];
+                }
+                if( haveBound ){
+                    /* Subtract upper bounds result from lower bounds result */
+                    return gteSum-this.ANDgte( m, nGroups, lteList );
+                }
+                else{
+                    /* No low bounds, use the simpler method */
+                    //console.log( "!haveBound" );
+                    return gteSum;
+                }
+            }
+            
+            /* With greater-than constraints. OR means constraints can out-total
+             * m, as long as all are not true */
+            this.ORgte=function( m, nGroups, gteList ){//gteList means greaterThanOrEqual array
+                gteList=removeByValue( gteList, 0 );//zero values cause trouble
+                this.len=gteList.length;
+                if( !this.len ){//this could happen if function called directly
+                    return this.simple( m, nGroups );
+                }
+                this.sum=0;
+                this.mult=-1;
+                /* Add the sets;*/
+                for( var i=0; i<this.len; i++){
+                    var x=this.ANDgte( m, nGroups, [ gteList[i] ] );
+                    document.write( "+ "+x+" " );
+                    this.sum+=x;
+                }
+                document.write( "<br>" );
+                /* Save top and bottom values for followMap() to use*/
+                this.top=m+nGroups-1;
+                this.bot=nGroups-1;                
+                /* Alternately subtract or add result of makeMap(), followMap() */
+                for ( var i = 2; i < this.len; i++) {
+                    this.makeMap( gteList, i, [], 0, 0 );
+                    this.mult*=-1;
+                    document.write( "<br>" );
+                }
+                return this.sum;
+            }
+            
+            /* For ORgte().  Recursive function to create the 
+             * inclusion/exclusion pattern.
+             * At the conclusion of each recursive process, calls followMap() */
+            this.makeMap=function ( S, n, map, start, index) {
+                if (index === n ) {
+                    this.followMap( S, map );
+                    return;
+                }
+                for (var i = start; i < this.len; i++) {
+                    map[index] = i;
+                    this.makeMap( S, n, map, i + 1, index + 1);
+                }
+            }
+            
+            /* For ORgte().  Follows the inclusion/exclusion pattern, 
+             * subtracting from 'top' the constraints the map points to. 
+             * Calls choose() with revised top number */
+            this.followMap=function( S, map ){
+                var mapLen=map.length;
+                if( !mapLen ){
+                    console.log( "no map" );
+                    return;
+                }
+                /* Set a local version of this.top to subtract comparison sets from */
+                var top=this.top;
+                for( var i=0; i<mapLen; i++ ){
+                    top-=S[ map[i] ];
+                }
+                //console.log( map );
+                var x=this.choose( top, this.bot );
+                if(this.mult>0){
+                    document.write( "+ "+x+" " );
+                }
+                else{
+                    document.write( "- "+x+" " );
+                }
+                this.sum+=x*this.mult;
+            }
+            this.dispConstraints=function ( constraints ){
+                var len=constraints.length;
+                var out=[];
+                var show=false;
+                for( var i=0; i<len; i++ ){
+                    if( constraints[i]>0 ){
+                        out.push( constraints[i] );
+                        show=true;
+                    }
+                    else{
+                        out.push( 'none ' );
+                    }
+                }
+                if( show ){
+                    document.write( out );
+                }
+                else{
+                    document.write( 'none' );
+                }
+                
+            }
+        }
+        
+        /* Test the functions with various valuse and constraints.
+         * 
+         * Constraints are passed as arrays, with the number of groups being
+         * the size of the arrays (notice each lo and hi is equal size)
+         * 
+         * It's a little counter-intuitive, but a 0 in a constraint means
+         * there is no constraint for that group
+         * 
+         * Alter the code to pass your own values in*/
+        (function(){
+            P=new IntPartition();
+            
+            /* No bound example: 
+             * [0,0,0] indicates 3 groups, no constraints */
+            document.write( "<br>No bound example:<br><br>" );
+            var out = P.hiLo( 13, [0,0,0], [0,0,0] );
+            document.write( "<br>Result is "+out+"<br><br>" );
+            
+            /* No bound example using simple() function:
+             * This gives the exact same result, because simple() doesn't 
+             * consider constraints */
+            document.write( "<br>Simple() example (same result):<br>" );
+            out = P.simple( 13, 3 );
+            document.write( "Result is "+out+"<br><br>" );
+            
+            /* Low bound example:
+             * Add a number to the lo bound array to exclude
+             * values below that amount for that group */
+            document.write( "<br>Low bound example:<br><br>" );
+            out = P.hiLo( 13, [5,0,0], [0,0,0] );
+            document.write( "<br>Result is "+out+"<br><br>" );
+            
+            /* Too-many-bounds example:
+             * 5+6+7>13, so the function calls OR's of lower bounds */
+            document.write( "<br>OR's of lower bounds example:<br><br>" );
+            out = P.hiLo( 13, [5,6,7], [0,0,0] );
+            document.write( "<br>Result is "+out+"<br><br>" );
+            
+            /* Bounds and ranges example:
+             * Add a number to the corresponding group in the hi bound array 
+             * to create a range:
+             * The range for this example is:
+             * >6, >4, >5, 3-5 inclusive */
+            document.write( "<br>Bounds and ranges example:<br><br>" );
+            out = P.hiLo( 26, [6,4,5,3], [0,0,0,5] );
+            document.write( "<br>Result is "+out+"<br><br>" );
+            
+            /* More ranges:
+             * The range for this example is:
+             * 4-13, <6, >4,4-10 inclusive */
+            document.write( "<br>More ranges example:<br><br>" );
+            out = P.hiLo( 30, [4,0,4,4], [13,6,0,10] );//hw problem
+            document.write( "<br>Result is "+out+"<br><br>" );
+        })();
+    </script>
+  </body>
+</html>
+
