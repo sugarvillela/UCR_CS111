@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="description" content=""/>
+    <meta name="author" content=""/>
+    <title id="title">RSAencryption</title>
+
+    <script>
+
+    </script>
+  </head>
+  <body>
+    <script>
+        function dispArray( array, width ){
+            var len=array.length;
+            for( var i=1; i<=len; i++ ){
+                document.write( array[i-1]+", " );
+                if( i%width==0 ){
+                    document.write('<br>');
+                }
+            }
+            document.write( "<br>" );
+        }
+        function dispMultsList( base, n ){
+            document.write( "<br>Multiples of "+base+'<br>' );
+            var p;
+            for(var i=1; i<=n; i++){
+                p=i*base;
+                document.write( '<b>'+i+":</b> "+p+', ');
+                if( i%6==0 ){
+                    document.write('<br>');
+                }
+                
+            }
+            document.write('<br>');
+        }
+        function dispMultsPlusOne( base, n ){
+            document.write( "<br>Multiples plus one of "+base+'<br>'  );
+            var p;
+            for(var i=1; i<=n; i++){
+                p=i*base+1;
+                document.write( '<b>'+i+":</b> "+p+', ');
+                if( i%6==0 ){
+                    document.write('<br>');
+                }
+            }
+            document.write('<br>');
+        }
+        
+        /* findInv uses the multiples method.
+         * n multiple is created by successive adding.
+         * p multiple is created with an incrementing multiplier i, then adding 1 
+         * To keep it efficient, nMult chases pMult closely: we don't 
+         * have to loop all combinations every time */
+        function findInv( n, p ){//in mod p, finds inverse of n
+            if( !n || !p ){
+                return false;
+            }
+            var pMult, nMult=0;
+            for( var i=1; i<=p; i++ ){
+                pMult=i*p+1;
+                do{
+                    nMult+=n;
+                    if( nMult==pMult){
+                        return ( nMult )/n;
+                    }
+
+                }while( nMult<pMult );
+            }
+            return false;
+        }
+        
+        /* powMod is just a power algorithm with the result converted to
+         * modulo on every iteration */
+        function powMod( base, pow, mod ){
+            if( !pow ){
+                return 1;
+            }
+            var out=base;
+            for( var i=1; i<pow; i++ ){
+                out*=base;
+                out%=mod;
+            }
+            return out;
+        }
+        /* rsaDecode runs the powMod function on every element in the M array, 
+         * then converts the result to text using the lookup array */
+        function rsaDecode( M, d, m ){
+            /* This lookup array is given as part of the problem */
+            var map=[
+                '', '', ' ', ',', '.', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 
+                'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W',
+                'X', 'Y', 'Z'
+            ];
+            var lenM=M.length, lenMap=map.length, out="", numeric;
+            for( var i=0; i<lenM; i++ ){
+                numeric=powMod( M[i]-0, d, m );
+                if( numeric>0 && numeric<lenMap ){
+                    out+=map[numeric];
+                }
+                else{
+                    document.write( i+": out of range: orig="+M[i] + ", dedoded="+numeric );
+                }
+            }
+            return out;
+        }
+        (function(){
+            /* You really need to read about RSA encryption to understand this,
+             * as I'm only including the highlights of the solution */
+            
+            /* This is the sequence to be decoded */
+            var M=[
+                45, 52, 8, 49, 74, 49, 8, 20, 59, 28, 8, 45,
+                52, 8, 49, 74, 49, 8,  59, 52, 16, 74, 8, 49,
+                52, 2, 22, 8, 70, 75, 8, 68, 45, 60, 72, 52,
+                46, 8, 14, 23, 49, 8, 3, 23, 59, 16, 49, 8,
+                3, 59, 28, 16, 2, 8, 56, 16, 72, 52, 2, 64
+            ];
+            document.write( 'This is the sequence to be decoded:<br>' );
+            dispArray( M, 10 );
+            
+            /* The public key is given as (e, n)=(11, 85), where 85 is the 
+             * modulus and 11 is the public key. */
+            var pe=11, pn=85;
+            
+            /* In a normal RSA encryption the modulus would be a really large 
+             * prime number that's impossible to factor.  Since we have 85 
+             * instead, it's easy to find the factorization: 5*17=85 */
+            document.write( 'The public key is given as (e, n) = (11, 85)<br>' );
+            document.write( 'Factorization: 5 * 17 = 85<br>' );
+            
+            /* Using (5-1)(17-1) gives 4*16=64.  That's the private modulus */
+            document.write( 'Private modulus: (p-1)(q-1) = (5-1)(17-1) = 4 * 16 = 64<br>' );
+            
+            /* Now we just need to find the inverse of 11 in mod 64:
+             * First find the multiples of 11*/
+            dispMultsList( pe, 35);
+            
+            /* Then find the multiples of 64 + 1: 65, 129 etc */
+            dispMultsPlusOne( 64, 6 );
+            /* We see that the lists coincide on the 35th iteration of the mults
+             * of 11, so d=35. */ 
+            
+             /* Or just use this function to calculate it */
+            var d=findInv( 11, 64 );//in mod p, finds inverse of n
+
+            /* Now we have the inputs to our decoder: 35 and 85 */
+            document.write( 'Private decode key='+d+', decode mod='+pn+'<br><br>' );
+            var out=rsaDecode( M, d, pn );
+            document.write( 'Sequence decoded:<br>'+out );
+            /* Now wasn't that a whole lot easier than doing it by hand? */
+        })();
+    </script>
+  </body>
+</html>
+
