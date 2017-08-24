@@ -1,5 +1,5 @@
 # UCR_CS111-Javascript
-UCR CS111 is Advanced Discrete Structures.  These algorithms are in Javascript.
+UCR CS111 is Intermediate Discrete Structures.  These algorithms are in Javascript.
 
 Though it's not really a programming class, I found it helpful to code the given algorithms for better understanding and memorization.
 
